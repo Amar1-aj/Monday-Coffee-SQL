@@ -1,111 +1,455 @@
 # Monday-Coffee-SQL
 
-🗂️ Project Structure
-Database Name: Monday Coffee
+DROP TABLE IF EXISTS sales;
+DROP TABLE IF EXISTS customers;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS city;
 
-Tables:
+-- Import Rules
+-- 1st import to city
+-- 2nd import to products
+-- 3rd import to customers
+-- 4th import to sales
 
-city: Contains demographic and rent data of different cities.
 
-products: Lists available coffee products and prices.
+		CREATE TABLE city
+		(
+			city_id INT PRIMARY KEY,
+			city_name VARCHAR(15),
+			population  BIGINT,
+			estimate_rent FLOAT,
+			city_rank INT
+		);
 
-customers: Customer IDs mapped to their cities.
 
-sales: Sales transaction data including product sold, amount, rating, and customer ID.
+		CREATE TABLE customers
+		(
+			customer_id INT PRIMARY KEY,
+			customer_name VARCHAR(25),
+			city_id INT,
+			CONSTRAINT fk_city FOREIGN KEY (city_id) REFERENCES city (city_id)
+		);
 
-🧠 Key Business Questions Answered
-☕ Coffee Consumer Estimation
-Estimate the number of coffee drinkers in each city (assuming 25% of the population).
 
-💰 Total Revenue Analysis
-Calculate total revenue across cities in the last quarter of 2023.
 
-📦 Product Sales Volume
-Identify how many units of each coffee product were sold.
+		CREATE TABLE products
+		(
+			product_id INT PRIMARY KEY,
+			product_name VARCHAR(35),
+			Price float
+		);
 
-🏙️ Average Sales Per City
-Determine the average revenue per customer in each city.
 
-👥 Customer Segmentation
-Analyze customer distribution and identify how many customers buy coffee in each city.
+		CREATE TABLE sales
+		(
+			sale_id INT PRIMARY KEY,
+			sale_date date,
+			product_id INT,
+			customer_id INT,
+			total FLOAT,
+			rating INT,
+			CONSTRAINT fk_products FOREIGN KEY (product_id) REFERENCES products(product_id),
+			CONSTRAINT fk_customers FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+		);
 
-📈 Monthly Growth Rate
-Evaluate sales growth/decline month over month per city.
+ -- END OF SCHEMAS
 
-🏆 Top-Selling Products by City
-Discover the top 3 best-selling coffee products in each city.
 
-📊 Average Sales vs Rent
-Compare average customer spend to estimated city rents.
 
-🚀 Market Potential Analysis
-Rank top cities based on a combination of sales, rent, customer count, and coffee consumption estimate.
+ -- Monday Coffee -- Data Analysis
 
-📌 SQL Concepts Demonstrated
-Joins (INNER, LEFT, RIGHT)
+ SELECT * FROM city;
+ SELECT * FROM products;
+ SELECT * FROM customers;
+ SELECT * FROM sales;
 
-Aggregations (SUM, COUNT, AVG)
 
-Window functions (DENSE_RANK, LAG)
+ -- Reports & Data Analysis
 
-Common Table Expressions (CTEs)
+ -- Q.1 Coffee Consumers Counts
+ -- How many people in each city are estimated to consume coffee, given that  25% of the population does?
 
-Date/time functions (EXTRACT, YEAR, MONTH, QUARTER)
+	SELECT 
+		city_name,
+		ROUND((population * 0.25)/1000000, 2) AS coffee_consumeres_in_milloions,
+		city_rank
+	FROM city
+	ORDER BY 2 DESC
 
-Conditional filtering and grouping
 
-Data normalization and performance reporting
+-- Q.2 Total  Revenue from Coffee Sales
+-- What is the total revenye generated from coffee sales across all cities in the last quarter of 2023?
 
-📸 Sample Insights
-🔸 Pune
-Highest total revenue.
 
-High average sales per customer.
+SELECT *,
+		EXTRACT(YEAR FROM sale_date) AS year,
+		EXTRACT(quarter FROM sale_date) AS qrt
+FROM sales
+WHERE
+	EXTRACT(YEAR FROM sale_date) = 2023
+	AND 
+	EXTRACT(quarter FROM sale_date) = 4
+ 
+-- Total Revenue
 
-Low rent per customer — making it a lucrative market.
+	SELECT 
+		SUM(total) AS total_revenue
+	FROM sales
+	WHERE
+		EXTRACT(YEAR FROM sale_date) = 2023
+		AND
+		EXTRACT(quarter FROM sale_date) = 4
+	
+	
+-----------------------------------------------	
+	
+	
+	
+	
+	SELECT 
+	  	ci.city_name,
+		SUM(s.total) AS total_revenue
+	FROM sales AS s
+	JOIN customers AS c
+	ON s.customer_id = c.customer_id
+	JOIN city AS ci
+	ON ci.city_id = c.city_id
+	WHERE 
+		EXTRACT(YEAR FROM s.sale_date) = 2023
+		AND 
+		EXTRACT(quarter FROM s.sale_date) = 4
+	GROUP BY 1
+	ORDER BY 2 DESC
 
-🔸 Delhi
-Largest estimated customer base (7.7M potential coffee drinkers).
 
-High revenue and customer base.
+-- Q.3 
+-- Sales Count for Each Product4
+-- How many units of each coffee product have been  sold?
 
-🔸 Jaipur
-Excellent customer reach.
+SELECT *
+FROM products AS p
+LEFT JOIN
+sales AS s
+ON s.product_id = p.product_id
 
-Good sales and low rent per customer.
 
-🚀 How to Run the Project
-Create the Database: Run the schema SQL to create tables.
+----------------------
 
-Import Data: Follow the order — city, products, customers, then sales.
+SELECT 
+	p.product_name,
+	COUNT(s.sale_id) AS total_orders
+FROM products AS p
+LEFT JOIN
+sales AS s
+ON s.product_id = p.product_id
+GROUP BY 1
+ORDER BY 2 DESC
 
-Run Queries: Execute the analysis queries to get business insights.
 
-📌 How to Upload to GitHub
-Create a new GitHub repository (e.g., monday-coffee-sql-analysis).
+-- Q.4 
+-- Average Sales Amount per City
+-- What is the average sales amount per customer in each city?
 
-Add:
+-- city and the total sales
+-- no cx in each these city
 
-schema.sql: For the database structure.
 
-analysis_queries.sql: All the analytical SQL queries.
+	SELECT 
+	  	ci.city_name,
+		SUM(s.total) AS total_revenue,
+		COUNT(DISTINCT s.customer_id) AS total_cx,
+		ROUND(	
+			SUM(s.total)::numeric/
+		COUNT(DISTINCT s.customer_id):: numeric
+		,2)AS avg_sale_pr_cx
+	FROM sales AS s
+	JOIN customers AS c
+	ON s.customer_id = c.customer_id
+	JOIN city AS ci
+	ON ci.city_id = c.city_id
+	GROUP BY 1
+	ORDER BY 2 DESC
 
-README.md: This file.
 
-Optional: Add a sample dataset or ER diagram if needed.
+-- Q.5 
+-- City Population and Coffee Consumers(25%)
+-- Provide a list of cities along with their population and estimated coffee consumers.
+-- Return city_name, total current cx, estimated coffee consumers (25%)
 
-🔗 How to Post on LinkedIn
-Here’s a sample LinkedIn caption you can use:
+	
+	 WITH city_table AS 
+	 (
+	SELECT 
+		city_name,
+		ROUND((population * 0.25)/1000000, 2) AS coffee_consumers
+	FROM city
+	),
+	  customers_table
+	  AS
+	  (
+	SELECT 
+		ci.city_name,
+		COUNT(DISTINCT c.customer_id) AS unique_cx
+	FROM sales AS s
+	JOIN customers AS c
+	ON c.customer_id = s.customer_id
+	JOIN city AS ci
+	ON ci.city_id = c.city_id
+	GROUP BY 1
+	)
+	
+	SELECT 
+	 	customers_table.city_name,
+		city_table.coffee_consumers AS coffee_consumer_in_millions,
+		customers_table.unique_cx
+	FROM city_table
+	JOIN
+	customers_table 
+	ON city_table.city_name = customers_table.city_name
 
-🧑‍💻 Just completed a fun SQL project — Monday Coffee ☕
-I analyzed customer behavior, product performance, and market potential using advanced SQL queries, including joins, window functions, and CTEs.
-🔍 Key Insights:
-• Pune is the top-performing city in terms of sales
-• Delhi has the highest coffee consumer base
-• Monthly growth trends reveal interesting seasonal patterns
+-- Q.6 
+-- Top Selling Products by city
+-- What are the top 3 selling products in each city based on slaes volume?
 
-📊 Skills: SQL, Data Analysis, Business Intelligence
-📁 GitHub: [link to your repository]
+
+	SELECT * 
+	FROM --table
+	(
+	SELECT 
+			ci.city_name,
+			p.product_name,
+			COUNT(s.sale_id) AS total_orders,
+			DENSE_RANK() OVER(PARTITION BY ci.city_name ORDER BY COUNT(s.sale_id) DESC) AS rank
+	FROM sales AS s
+	JOIN products AS p
+	ON s.product_id = p.product_id
+	JOIN customers AS c
+	ON c.customer_id = s.customer_id
+	JOIN city AS ci
+	ON ci.city_id = c.city_id
+	GROUP BY 1, 2
+	-- ORDER BY 1, 3 DESC
+	) AS t1
+	WHERE rank <=3
+
+
+-- Q.7 
+-- Customer Segmenttation by city
+-- How many unique customers are there in each city who have purchased coffee products?
+
+SELECT * FROM  products;
+
+SELECT 
+ 	ci.city_name,
+	 COUNT(DISTINCT c.customer_id) AS unique_cx
+FROM city AS ci
+LEFT JOIN
+customers AS c
+ON c.city_id = ci.city_id
+JOIN sales AS s
+ON s.customer_id = c.customer_id
+JOIN products AS p
+ON p.product_id = s.product_id
+WHERE
+ 	s.product_id IN (1,2,3,4,5,6,7,8,9,10,11,12,13,14)
+GROUP BY 1
+
+-- Q.8 
+-- Average Sale vs Rent
+-- Find each city and their average sale per customer and avg rent per customer.
+
+
+WITH city_table
+AS
+(
+	SELECT 
+			ci.city_name,
+			SUM(s.total) as total_revenue,
+			COUNT(DISTINCT s.customer_id) as total_cx,
+			ROUND(
+					SUM(s.total)::numeric/
+						COUNT(DISTINCT s.customer_id)::numeric
+					,2) as avg_sale_pr_cx
+			
+		FROM sales as s
+		JOIN customers as c
+		ON s.customer_id = c.customer_id
+		JOIN city as ci
+		ON ci.city_id = c.city_id
+		GROUP BY 1
+		ORDER BY 2 DESC
+
+),
+city_rent
+AS
+(
+SELECT 
+	city_name,
+	estimate_rent
+FROM city
+)
+SELECT 
+	cr.city_name,
+	cr.estimate_rent,
+	ct.avg_sale_pr_cx,
+	ROUND(
+			cr.estimate_rent::numeric/
+			ct.total_cx::numeric
+			, 2) AS avg_rent_per_cx
+	FROM city_rent AS cr
+	JOIN city_table AS ct
+	ON cr.city_name = ct.city_name
+	ORDER BY 4 DESC
+	
+
+
+----------------------------
+
+
+
+SELECT * 
+FROM city AS ci
+LEFT JOIN
+customers AS c
+ON c.city_id = ci.city_id
+JOIN sales AS s
+ON s.customer_id = c.customer_id
+
+--- Question 8  solved
+
+
+--Q.9 
+-- Monthly Sales Growth
+-- Sales growth rate: Calculate the percentage growth (or decline) in sales over different time periods (monthly)
+-- by each city
+
+SELECT * 
+FROM sales AS s
+JOIN customers AS c
+ON c.customer_id = s.customer_id
+JOIN city AS ci
+ON 	ci.city_id = c.city_id
+
+
+
+
+
+WITH
+monthly_sales
+AS
+(
+SELECT 
+	ci.city_name,
+	EXTRACT(MONTH FROM sale_date) AS month,
+	EXTRACT(YEAR FROM sale_date) AS YEAR,
+	SUM(s.total) AS total_sale
+FROM sales AS s
+JOIN customers AS c
+ON c.customer_id = s.customer_id
+JOIN city AS ci
+ON ci.city_id = c.city_id
+GROUP BY 1,2,3
+ORDER BY 1,2,3
+),
+	growth_ratio
+	AS
+	(
+		SELECT 
+			city_name,
+			month,
+			year,
+			total_sale AS cr_month_sale,
+			LAG(total_sale, 1) OVER(PARTITION BY city_name ORDER BY year, month) AS last_month_sale
+		FROM monthly_sales
+)
+
+	SELECT 
+		city_name,
+		month,
+		year,
+		cr_month_sale,
+		last_month_sale,
+		ROUND(
+	          (cr_month_sale-last_month_sale)::numeric/last_month_sale::numeric * 100
+			  , 2
+			  ) AS growth_ratio
+FROM growth_ratio
+WHERE 
+	last_month_sale IS NOT NULL
+		  
+	
+
+-- Q.10 
+-- Market Potential Analysis
+-- Identify top 3 city based on highest sales, return city name, total sale, total rent, total customers, estimated coffee consumer
+
+
+
+
+WITH city_table
+AS
+(
+	SELECT 
+			ci.city_name,
+			SUM(s.total) as total_revenue,
+			COUNT(DISTINCT s.customer_id) as total_cx,
+			ROUND(
+					SUM(s.total)::numeric/
+						COUNT(DISTINCT s.customer_id)::numeric
+					,2) as avg_sale_pr_cx
+			
+		FROM sales as s
+		JOIN customers as c
+		ON s.customer_id = c.customer_id
+		JOIN city as ci
+		ON ci.city_id = c.city_id
+		GROUP BY 1
+		ORDER BY 2 DESC
+
+),
+city_rent
+AS
+(
+SELECT 
+	city_name,
+	estimate_rent,
+	ROUND((population * 0.25)/1000000,3) AS estimated_coffee_consumer_in_millions
+FROM city
+)
+SELECT 
+	cr.city_name,
+	total_revenue,
+	cr.estimate_rent AS total_rent,
+	ct.total_cx,
+	estimated_coffee_consumer_in_millions,	
+	cr.estimate_rent,
+	ct.avg_sale_pr_cx,
+	ROUND(
+			cr.estimate_rent::numeric/
+			ct.total_cx::numeric
+			, 2) AS avg_rent_per_cx
+	FROM city_rent AS cr
+	JOIN city_table AS ct
+	ON cr.city_name = ct.city_name
+	ORDER BY 4 DESC
+	
+
+/* 
+-- Recomendation 
+City 1: Pune
+	1: Avg rent per cx is very less,
+	2: Highest total revenue,
+	3: avg_sale per cx is also high
+	
+City 2: Delhi
+	1. Highest estimated coffee consumer which is 7.7M
+	2. Highest total cx which is 68
+	3. avg rent per cx 330(still under 500)
+City 3. Jaipur
+	1. Highest cx no which is 69
+	2. avg rent per cx is very less 156
+	3. avg sale per cx is better which at 11.6K
+
 
 
 
